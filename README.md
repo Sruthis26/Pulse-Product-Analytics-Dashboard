@@ -158,7 +158,7 @@ This creates a realistic product analytics simulation environment.
 ---
 
 ## A/B Testing Dashboard
-![A/B Testing](ab-_testing.png)
+![A/B Testing](ab_testing.png)
 
 ---
 

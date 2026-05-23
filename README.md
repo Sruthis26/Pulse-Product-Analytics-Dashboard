@@ -138,7 +138,7 @@ This creates a realistic product analytics simulation environment.
 # Screenshots
 
 ## KPI Dashboard
-![KPI Dashboard](kpi_dashboard.png)
+![KPI Dashboard](kpi_dashboards.png)
 
 ---
 

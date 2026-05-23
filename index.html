@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Pulse — Product Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090d;--bg2:#0f1117;--bg3:#161820;
+  --border:#ffffff0f;--border2:#ffffff18;--border3:#ffffff25;
+  --text:#f2f0ed;--muted:#8b8d99;--muted2:#555762;
+  --green:#4ade80;--green-dim:#4ade801a;
+  --blue:#60a5fa;--blue-dim:#60a5fa1a;
+  --purple:#a78bfa;--purple-dim:#a78bfa1a;
+  --pink:#f472b6;
+  --amber:#fbbf24;--amber-dim:#fbbf241a;
+  --red:#f87171;--red-dim:#f871711a;
+  --cyan:#22d3ee;
+  --r:10px;--r2:14px;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:14px;line-height:1.6;overflow:hidden}
+.app{display:flex;height:100vh}
+
+/* SIDEBAR */
+.sidebar{width:220px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;overflow-y:auto}
+.sb-logo{padding:18px 18px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--green),var(--cyan));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.sb-brand{font-family:'Playfair Display',serif;font-size:19px;font-weight:800}
+.sb-tag{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.07em}
+.sb-product{margin:12px 10px 4px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:8px 11px;display:flex;align-items:center;gap:7px}
+.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;flex-shrink:0;animation:blink 1.8s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.sb-pname{font-size:12px;font-weight:500;flex:1}
+.sb-sec{padding:12px 10px 2px}
+.sb-sec-lbl{font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.1em;color:var(--muted2);text-transform:uppercase;padding:0 8px;margin-bottom:5px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r);cursor:pointer;color:var(--muted);font-size:13px;margin-bottom:1px;border:1px solid transparent;transition:all .15s;user-select:none}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:var(--green-dim);color:var(--green);border-color:#4ade8015;font-weight:500}
+.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.sb-footer{margin-top:auto;padding:12px 10px;border-top:1px solid var(--border)}
+.sim-note{background:var(--amber-dim);border:1px solid #fbbf2418;border-radius:var(--r);padding:9px 11px;font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;line-height:1.6;margin-bottom:9px}
+.refresh-btn{width:100%;background:var(--green-dim);border:1px solid #4ade8022;border-radius:var(--r);color:var(--green);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;padding:8px;cursor:pointer;transition:all .2s}
+.refresh-btn:hover{background:#4ade8025}
+.refresh-btn:disabled{opacity:.5;cursor:wait}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;height:100vh}
+.topbar{padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);flex-shrink:0;gap:10px;flex-wrap:wrap}
+.page-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:800}
+.page-meta{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:9px}
+.range-sel{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:6px 11px;font-size:12px;font-family:'DM Mono',monospace;color:var(--muted);outline:none;cursor:pointer;appearance:none}
+.live-pill{display:flex;align-items:center;gap:5px;font-size:10px;font-family:'DM Mono',monospace;color:var(--green);background:var(--green-dim);border:1px solid #4ade8015;border-radius:20px;padding:4px 10px}
+.live-pill::before{content:'';width:5px;height:5px;background:var(--green);border-radius:50%;animation:blink 1.5s ease infinite}
+
+/* CONTENT */
+.content{padding:22px 24px 50px;overflow-y:auto;overflow-x:hidden;flex:1}
+.tab-section{display:none}.tab-section.active{display:block}
+
+/* AI BOX */
+.ai-box{background:#05080e;border:1px solid #4ade8020;border-radius:var(--r2);padding:16px 18px;margin-bottom:18px;position:relative;overflow:hidden}
+.ai-box::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:radial-gradient(circle,#4ade8012,transparent 70%);pointer-events:none}
+.ai-lbl{font-size:10px;font-family:'DM Mono',monospace;color:var(--green);letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.ai-lbl::before{content:'⬢';font-size:11px}
+.ai-txt{font-size:13px;color:#a8c0d8;line-height:1.75}
+.ai-txt strong{color:var(--text);font-weight:500}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px}
+.kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:16px;position:relative;overflow:hidden;transition:border-color .2s}
+.kpi-card:hover{border-color:var(--border3)}
+.kpi-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:2px 2px 0 0}
+.kk-g::after{background:var(--green)}.kk-b::after{background:var(--blue)}
+.kk-p::after{background:var(--purple)}.kk-pk::after{background:var(--pink)}
+.kk-a::after{background:var(--amber)}.kk-r::after{background:var(--red)}
+.kpi-lbl{font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+.kpi-val{font-family:'Playfair Display',serif;font-size:26px;font-weight:800;line-height:1;margin-bottom:4px}
+.kpi-delta{font-size:11px;display:flex;align-items:center;gap:3px;flex-wrap:wrap}
+.up{color:var(--green)}.dn{color:var(--red)}.neu{color:var(--muted)}
+.kpi-spark{height:32px;margin-top:8px}
+
+/* CHARTS */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:16px}
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:18px}
+.chart-card.full{grid-column:1/-1}
+.chart-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:8px;flex-wrap:wrap}
+.chart-title{font-size:14px;font-weight:600}
+.chart-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.chip{font-size:10px;font-family:'DM Mono',monospace;padding:3px 8px;border-radius:20px;border:1px solid;background:transparent;white-space:nowrap}
+.chip-g{color:var(--green);border-color:#4ade8030}
+.chip-r{color:var(--red);border-color:#f8717130}
+.chip-b{color:var(--blue);border-color:#60a5fa30}
+.legend-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;color:var(--muted);align-items:center}
+.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;display:inline-block}
+
+/* SEC HEADER */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:6px}
+.sec-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:700}
+.sec-meta{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
+
+/* FUNNEL */
+.ftabs{display:flex;gap:7px;margin-bottom:16px;flex-wrap:wrap}
+.ftab{padding:6px 14px;border-radius:var(--r);border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:12px;cursor:pointer;transition:all .15s}
+.ftab:hover{color:var(--text);border-color:var(--border3)}
+.ftab.active{background:var(--green-dim);color:var(--green);border-color:#4ade8025;font-weight:500}
+.f-row{display:flex;align-items:center;gap:9px;margin-bottom:4px}
+.f-lbl{font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);min-width:175px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.f-bar-bg{flex:1;height:32px;background:var(--bg3);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+.f-bar{height:100%;border-radius:3px;display:flex;align-items:center;padding:0 9px;font-size:11px;font-weight:600;font-family:'DM Mono',monospace;color:#05080e;min-width:10px}
+.f-pct{font-size:11px;font-family:'DM Mono',monospace;min-width:45px;color:var(--muted);text-align:right;flex-shrink:0}
+.f-drop{font-size:11px;color:var(--red);font-family:'DM Mono',monospace;min-width:50px;flex-shrink:0}
+.f-arrow{font-size:11px;color:var(--muted2);padding:1px 0 1px 184px;line-height:1}
+
+/* HYPOTHESES */
+.hyp-card{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:var(--r);padding:13px;margin-bottom:7px}
+.hyp-card.med{border-left-color:var(--amber)}.hyp-card.low{border-left-color:var(--green)}
+.hyp-step{font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);margin-bottom:3px;letter-spacing:.04em}
+.hyp-text{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:6px}
+.hyp-action{font-size:11px;color:var(--green);background:var(--green-dim);border:1px solid #4ade8012;padding:4px 9px;border-radius:5px;display:inline-block}
+
+/* CHURN REASONS */
+.reason-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.reason-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;display:flex;gap:10px}
+.reason-pct{font-family:'Playfair Display',serif;font-size:19px;font-weight:800;color:var(--red);min-width:40px;line-height:1.2}
+.reason-title{font-size:13px;font-weight:600;margin-bottom:2px}
+.reason-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:5px}
+.reason-bar-bg{height:3px;background:var(--bg);border-radius:2px}
+.reason-bar{height:3px;background:var(--red);border-radius:2px}
+
+/* COHORT */
+.cohort-table{width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace}
+.cohort-table th{padding:7px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:400;text-align:center;font-size:10px}
+.cohort-table th:first-child{text-align:left}
+.cohort-table td{padding:5px 8px;border-bottom:1px solid var(--border);text-align:center}
+.cohort-table td:first-child{text-align:left;color:var(--muted)}
+.cc{display:inline-flex;align-items:center;justify-content:center;width:40px;height:20px;border-radius:4px;font-size:10px;font-weight:500}
+
+/* AB */
+.ab-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:18px;margin-bottom:12px}
+.ab-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:13px;gap:9px;flex-wrap:wrap}
+.ab-name{font-size:14px;font-weight:600}
+.ab-detail{font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace}
+.ab-badge{font-size:10px;font-family:'DM Mono',monospace;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.s-win{background:var(--green-dim);color:var(--green);border:1px solid #4ade8020}
+.s-run{background:var(--blue-dim);color:var(--blue);border:1px solid #60a5fa20}
+.s-stop{background:var(--red-dim);color:var(--red);border:1px solid #f8717120}
+.ab-variants{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.variant{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+.v-lbl{font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.v-val{font-family:'Playfair Display',serif;font-size:21px;font-weight:800;margin-bottom:2px}
+.v-lift{font-size:11px;margin-top:2px}
+.ab-meta{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--muted)}
+.am{display:flex;align-items:center;gap:4px}
+.am-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+
+/* ══ RECOMMENDATIONS TABLE ══ */
+.rec-section{margin-top:22px}
+.rec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.rec-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.rec-title::before{content:'◈';color:var(--green);font-size:13px}
+.rec-sub{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
+.rec-table-wrap{overflow-x:auto;border-radius:var(--r2);border:1px solid var(--border)}
+.rec-table{width:100%;border-collapse:collapse;font-size:13px}
+.rec-table thead tr{background:var(--bg3)}
+.rec-table th{padding:11px 14px;text-align:left;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.07em;color:var(--muted);text-transform:uppercase;font-weight:500;white-space:nowrap;border-bottom:1px solid var(--border2)}
+.rec-table td{padding:13px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+.rec-table tr:last-child td{border-bottom:none}
+.rec-table tr:hover td{background:#ffffff04}
+.rec-problem{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px}
+.rec-problem-sub{font-size:11px;color:var(--muted);line-height:1.4}
+.rec-recommendation{font-size:13px;color:var(--text);line-height:1.5}
+.rec-recommendation em{font-style:normal;color:var(--cyan);font-size:11px;font-family:'DM Mono',monospace;display:block;margin-top:3px}
+.impact-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:20px;border:1px solid;white-space:nowrap;font-weight:500}
+.imp-high{color:var(--green);border-color:#4ade8030;background:var(--green-dim)}
+.imp-med{color:var(--amber);border-color:#fbbf2430;background:var(--amber-dim)}
+.imp-low{color:var(--blue);border-color:#60a5fa30;background:var(--blue-dim)}
+.pri-badge{display:inline-flex;align-items:center;font-size:10px;font-family:'DM Mono',monospace;padding:3px 9px;border-radius:20px;border:1px solid;white-space:nowrap}
+.pri-p1{color:#f87171;border-color:#f8717130;background:var(--red-dim)}
+.pri-p2{color:var(--amber);border-color:#fbbf2430;background:var(--amber-dim)}
+.pri-p3{color:var(--blue);border-color:#60a5fa30;background:var(--blue-dim)}
+.pri-p4{color:var(--muted);border-color:var(--border2);background:var(--bg3)}
+.outcome-text{font-size:12px;color:var(--muted);line-height:1.5}
+.outcome-num{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border3);border-radius:3px}
+
+@media(max-width:820px){
+  .sidebar{width:48px}.sb-logo>div,.sb-pname,.sb-sec-lbl,.sb-footer{display:none}
+  .sb-brand,.sb-tag{display:none}.nav-item span:not(.nav-icon){display:none}
+  .nav-item{justify-content:center;padding:10px}
+  .chart-grid{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .content{padding:12px 12px 40px}
+  .topbar{padding:11px 13px}
+  .ab-variants,.reason-grid{grid-template-columns:1fr}
+  .rec-table th:nth-child(5),.rec-table td:nth-child(5){display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-icon">◈</div>
+    <div><div class="sb-brand">Pulse</div><div class="sb-tag">Analytics OS</div></div>
+  </div>
+  <div class="sb-product">
+    <div class="live-dot"></div>
+    <span class="sb-pname">StreamFlow Music</span>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-sec-lbl">Overview</div>
+    <div class="nav-item active" id="nav-kpi" onclick="showTab('kpi')"><span class="nav-icon">◈</span><span>KPI Dashboard</span></div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-sec-lbl">Acquisition</div>
+    <div class="nav-item" id="nav-funnel" onclick="showTab('funnel')"><span class="nav-icon">⌥</span><span>Funnel Analytics</span></div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-sec-lbl">Retention</div>
+    <div class="nav-item" id="nav-churn" onclick="showTab('churn')"><span class="nav-icon">⚠</span><span>Churn Analytics</span></div>
+    <div class="nav-item" id="nav-cohort" onclick="showTab('cohort')"><span class="nav-icon">⊞</span><span>Cohort Analysis</span></div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-sec-lbl">Experiments</div>
+    <div class="nav-item" id="nav-ab" onclick="showTab('ab')"><span class="nav-icon">⚗</span><span>A/B Tests</span></div>
+  </div>
+  <div class="sb-footer">
+    <div class="sim-note">🎲 SIMULATED DATA<br>StreamFlow v3.1<br><span style="color:var(--muted2)">Refresh = new snapshot</span></div>
+    <button class="refresh-btn" id="refreshBtn" onclick="doRefresh()">↻ Refresh Data</button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-title" id="pageTitle">KPI Dashboard</div>
+      <div class="page-meta">StreamFlow Music · 3.4M users · Simulated live data</div>
+    </div>
+    <div class="tb-right">
+      <select class="range-sel" id="rangeSelect" onchange="doRefresh()">
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
+      </select>
+      <div class="live-pill">LIVE SIM</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══════════════ KPI TAB ══════════════ -->
+    <div class="tab-section active" id="tab-kpi">
+      <div class="ai-box">
+        <div class="ai-lbl">AI Insight</div>
+        <div class="ai-txt" id="kpiInsight">Analysing metrics…</div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card kk-g"><div class="kpi-lbl">Daily Active Users</div><div class="kpi-val" id="v-dau" style="color:var(--green)">—</div><div class="kpi-delta" id="d-dau"></div><canvas class="kpi-spark" id="sp-dau"></canvas></div>
+        <div class="kpi-card kk-b"><div class="kpi-lbl">Monthly Subscribers</div><div class="kpi-val" id="v-subs" style="color:var(--blue)">—</div><div class="kpi-delta" id="d-subs"></div><canvas class="kpi-spark" id="sp-subs"></canvas></div>
+        <div class="kpi-card kk-p"><div class="kpi-lbl">Trial → Paid CVR</div><div class="kpi-val" id="v-cvr" style="color:var(--purple)">—</div><div class="kpi-delta" id="d-cvr"></div><canvas class="kpi-spark" id="sp-cvr"></canvas></div>
+        <div class="kpi-card kk-pk"><div class="kpi-lbl">Avg Session (min)</div><div class="kpi-val" id="v-sess" style="color:var(--pink)">—</div><div class="kpi-delta" id="d-sess"></div><canvas class="kpi-spark" id="sp-sess"></canvas></div>
+        <div class="kpi-card kk-a"><div class="kpi-lbl">Monthly Churn</div><div class="kpi-val" id="v-churn" style="color:var(--amber)">—</div><div class="kpi-delta" id="d-churn"></div><canvas class="kpi-spark" id="sp-churn"></canvas></div>
+        <div class="kpi-card kk-r"><div class="kpi-lbl">ARPU (Monthly)</div><div class="kpi-val" id="v-arpu" style="color:var(--text)">—</div><div class="kpi-delta" id="d-arpu"></div><canvas class="kpi-spark" id="sp-arpu"></canvas></div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card full">
+          <div class="chart-hd">
+            <div><div class="chart-title">User Growth Trends</div><div class="chart-sub" id="growthSub">DAU · MAU · Subscribers</div></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span class="chip chip-g" id="chip-dau">DAU</span>
+              <span class="chip chip-b" id="chip-subs">Subs</span>
+            </div>
+          </div>
+          <div style="position:relative;height:230px"><canvas id="growthChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-hd">
+            <div><div class="chart-title">Revenue by Plan</div><div class="chart-sub" id="mrrSub">MRR split by tier</div></div>
+            <span class="chip chip-b" id="chip-mrr">MRR</span>
+          </div>
+          <div class="legend-row">
+            <span style="display:flex;align-items:center;gap:4px"><span class="legend-dot" style="background:#4ade80"></span>Individual</span>
+            <span style="display:flex;align-items:center;gap:4px"><span class="legend-dot" style="background:#60a5fa"></span>Family</span>
+            <span style="display:flex;align-items:center;gap:4px"><span class="legend-dot" style="background:#a78bfa"></span>Student</span>
+            <span style="display:flex;align-items:center;gap:4px"><span class="legend-dot" style="background:#fbbf24"></span>Annual</span>
+          </div>
+          <div style="position:relative;height:175px"><canvas id="revenueChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-hd"><div><div class="chart-title">Feature Adoption</div><div class="chart-sub">% active users per feature</div></div></div>
+          <div style="position:relative;height:175px"><canvas id="featureChart"></canvas></div>
+        </div>
+      </div>
+      <!-- KPI RECOMMENDATIONS -->
+      <div class="rec-section">
+        <div class="rec-hd">
+          <div class="rec-title">Recommendations & Actions</div>
+          <div class="rec-sub">AI-generated · Based on current KPI signals</div>
+        </div>
+        <div class="rec-table-wrap">
+          <table class="rec-table">
+            <thead><tr><th>Problem</th><th>Recommendation</th><th>Expected Impact</th><th>Priority</th><th>Business Outcome</th></tr></thead>
+            <tbody id="kpiRecTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ FUNNEL TAB ══════════════ -->
+    <div class="tab-section" id="tab-funnel">
+      <div class="sec-hd">
+        <div class="sec-title">Funnel Analytics</div>
+        <div class="sec-meta" id="funnelMeta">Choose a funnel below</div>
+      </div>
+      <div class="ftabs">
+        <button class="ftab active" onclick="switchFunnel('activation',this)">User Activation</button>
+        <button class="ftab" onclick="switchFunnel('trial',this)">Trial → Paid</button>
+        <button class="ftab" onclick="switchFunnel('referral',this)">Referral Journey</button>
+        <button class="ftab" onclick="switchFunnel('playlist',this)">Playlist Creation</button>
+      </div>
+      <div class="chart-card full" style="margin-bottom:14px">
+        <div class="chart-hd">
+          <div><div class="chart-title" id="funnelTitle">—</div><div class="chart-sub" id="funnelSub">—</div></div>
+          <span class="chip chip-r" id="funnelDrop">—</span>
+        </div>
+        <div id="funnelViz"></div>
+      </div>
+      <div class="ai-box">
+        <div class="ai-lbl">Drop-off Diagnosis</div>
+        <div id="funnelHyp"></div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-hd">
+            <div><div class="chart-title">Conversion by Platform</div><div class="chart-sub">iOS vs Android at each stage</div></div>
+            <div class="legend-row" style="margin-bottom:0">
+              <span style="display:flex;align-items:center;gap:4px"><span class="legend-dot" style="background:#60a5fa"></span>iOS</span>
+              <span style="display:flex;align-items:center;gap:4px"><span class="legend-dot" style="background:#a78bfa"></span>Android</span>
+            </div>
+          </div>
+          <div style="position:relative;height:200px"><canvas id="platformChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-hd"><div><div class="chart-title">CVR by Traffic Source</div><div class="chart-sub">End-to-end conversion %</div></div></div>
+          <div style="position:relative;height:200px"><canvas id="sourceChart"></canvas></div>
+        </div>
+      </div>
+      <!-- FUNNEL RECOMMENDATIONS -->
+      <div class="rec-section">
+        <div class="rec-hd">
+          <div class="rec-title">Funnel Recommendations</div>
+          <div class="rec-sub" id="funnelRecSub">Based on active funnel drop-off analysis</div>
+        </div>
+        <div class="rec-table-wrap">
+          <table class="rec-table">
+            <thead><tr><th>Problem</th><th>Recommendation</th><th>Expected Impact</th><th>Priority</th><th>Business Outcome</th></tr></thead>
+            <tbody id="funnelRecTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ CHURN TAB ══════════════ -->
+    <div class="tab-section" id="tab-churn">
+      <div class="sec-hd"><div class="sec-title">Churn Analytics</div><div class="sec-meta" id="churnMeta">Monthly churn · Paying subscribers</div></div>
+      <div class="ai-box"><div class="ai-lbl">AI Churn Intelligence</div><div class="ai-txt" id="churnInsight">Analysing…</div></div>
+      <div class="kpi-grid">
+        <div class="kpi-card kk-r"><div class="kpi-lbl">Monthly Churn</div><div class="kpi-val" id="c-churn" style="color:var(--red)">—</div><div class="kpi-delta" id="cd-churn"></div></div>
+        <div class="kpi-card kk-a"><div class="kpi-lbl">At-Risk Users</div><div class="kpi-val" id="c-risk" style="color:var(--amber)">—</div><div class="kpi-delta" style="color:var(--muted)">7-day inactive</div></div>
+        <div class="kpi-card kk-b"><div class="kpi-lbl">Avg Paid LTV</div><div class="kpi-val" id="c-ltv" style="color:var(--blue)">—</div><div class="kpi-delta" id="cd-ltv"></div></div>
+        <div class="kpi-card kk-g"><div class="kpi-lbl">Resurrected Users</div><div class="kpi-val" id="c-res" style="color:var(--green)">—</div><div class="kpi-delta" style="color:var(--muted)">via re-engagement</div></div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-hd">
+            <div><div class="chart-title">Churn Rate Trend</div><div class="chart-sub">Monthly % · dashed = 2.5% target</div></div>
+            <span class="chip chip-r" id="chip-churn">—</span>
+          </div>
+          <div style="position:relative;height:200px"><canvas id="churnTrendChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-hd"><div><div class="chart-title">Churn by Plan</div><div class="chart-sub">Which tier churns most?</div></div></div>
+          <div style="position:relative;height:200px"><canvas id="churnPlanChart"></canvas></div>
+        </div>
+        <div class="chart-card full">
+          <div class="chart-hd"><div><div class="chart-title">Exit Survey — Why Users Cancel</div><div class="chart-sub">Self-reported · ~1,800 responses</div></div></div>
+          <div class="reason-grid" id="reasonGrid"></div>
+        </div>
+      </div>
+      <!-- CHURN RECOMMENDATIONS -->
+      <div class="rec-section">
+        <div class="rec-hd">
+          <div class="rec-title">Churn Reduction Playbook</div>
+          <div class="rec-sub">Ranked by retention impact potential</div>
+        </div>
+        <div class="rec-table-wrap">
+          <table class="rec-table">
+            <thead><tr><th>Problem</th><th>Recommendation</th><th>Expected Impact</th><th>Priority</th><th>Business Outcome</th></tr></thead>
+            <tbody id="churnRecTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ COHORT TAB ══════════════ -->
+    <div class="tab-section" id="tab-cohort">
+      <div class="sec-hd"><div class="sec-title">Cohort Retention</div><div class="sec-meta">Weekly cohorts · % still active per week</div></div>
+      <div class="ai-box"><div class="ai-lbl">Cohort Intelligence</div><div class="ai-txt" id="cohortInsight">Analysing…</div></div>
+      <div class="chart-card full" style="margin-bottom:14px">
+        <div class="chart-hd">
+          <div><div class="chart-title">Retention Curves</div><div class="chart-sub">% of cohort active by week</div></div>
+          <div class="legend-row" style="margin-bottom:0">
+            <span style="display:flex;align-items:center;gap:4px"><span class="legend-dot" style="background:#4ade80"></span>Jan–Feb</span>
+            <span style="display:flex;align-items:center;gap:4px"><span class="legend-dot" style="background:#60a5fa"></span>Mar–Apr</span>
+            <span style="display:flex;align-items:center;gap:4px"><span class="legend-dot" style="background:#a78bfa"></span>May</span>
+          </div>
+        </div>
+        <div style="position:relative;height:240px"><canvas id="cohortCurveChart"></canvas></div>
+      </div>
+      <div class="chart-card full">
+        <div class="chart-hd"><div><div class="chart-title">Retention Heatmap</div><div class="chart-sub">Green = retained · Red = churned</div></div></div>
+        <div style="overflow-x:auto"><table class="cohort-table" id="cohortTable"></table></div>
+      </div>
+      <!-- COHORT RECOMMENDATIONS -->
+      <div class="rec-section">
+        <div class="rec-hd">
+          <div class="rec-title">Cohort Improvement Actions</div>
+          <div class="rec-sub">Targeted interventions per cohort pattern</div>
+        </div>
+        <div class="rec-table-wrap">
+          <table class="rec-table">
+            <thead><tr><th>Problem</th><th>Recommendation</th><th>Expected Impact</th><th>Priority</th><th>Business Outcome</th></tr></thead>
+            <tbody id="cohortRecTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ AB TAB ══════════════ -->
+    <div class="tab-section" id="tab-ab">
+      <div class="sec-hd"><div class="sec-title">A/B Test Results</div><div class="sec-meta">4 experiments · 1 running · 2 winners · 1 stopped</div></div>
+      <div class="ai-box"><div class="ai-lbl">Experiment Intelligence</div><div class="ai-txt"><strong>Paywall Delay (Session 3) is your top priority to ship</strong> — 94% confidence, +4.1pt lift in trial-to-paid CVR, estimated <strong>+$28K MRR</strong> within 60 days. The <strong>Mini Player test must stay stopped</strong> — statistically significant −10.1% session regression with zero conversion benefit.</div></div>
+
+      <div class="ab-card">
+        <div class="ab-hd"><div><div class="ab-name">Paywall Timing — Delay to Session 3</div><div class="ab-detail">Trial→Paid CVR · May 1 · 18,240 users · 17 days</div></div><span class="ab-badge s-win">✓ WINNER — 94% conf</span></div>
+        <div class="ab-variants">
+          <div class="variant"><div class="v-lbl">Control — Paywall at Session 1</div><div class="v-val" style="color:var(--muted)">18.3%</div><div class="v-lift neu">Baseline CVR</div></div>
+          <div class="variant" style="border-color:#4ade8030;background:#4ade8008"><div class="v-lbl">Variant — Paywall at Session 3 ★</div><div class="v-val" style="color:var(--green)">22.4%</div><div class="v-lift up">▲ +4.1pt (+22.4%)</div></div>
+        </div>
+        <div class="ab-meta"><span class="am"><span class="am-dot" style="background:var(--green)"></span>94.2% confidence</span><span class="am"><span class="am-dot" style="background:var(--blue)"></span>18,240 users</span><span class="am"><span class="am-dot" style="background:var(--purple)"></span>Est. +$28K MRR</span></div>
+      </div>
+
+      <div class="ab-card">
+        <div class="ab-hd"><div><div class="ab-name">Discover Weekly — Home Hero vs Tab Bar</div><div class="ab-detail">Session Duration · May 8 · 24,100 users · Running</div></div><span class="ab-badge s-run">● RUNNING</span></div>
+        <div class="ab-variants">
+          <div class="variant"><div class="v-lbl">Control — Tab bar</div><div class="v-val" style="color:var(--muted)">34.7 min</div><div class="v-lift neu">Avg session</div></div>
+          <div class="variant"><div class="v-lbl">Variant — Home hero</div><div class="v-val" style="color:var(--blue)">38.2 min</div><div class="v-lift up">▲ +3.5 min (+10.1%)</div></div>
+        </div>
+        <div class="ab-meta"><span class="am"><span class="am-dot" style="background:var(--blue)"></span>78.1% conf — need 95%</span><span class="am"><span class="am-dot" style="background:var(--amber)"></span>ETA ~5 more days</span></div>
+      </div>
+
+      <div class="ab-card">
+        <div class="ab-hd"><div><div class="ab-name">Onboarding — 6 Mood Tiles vs 22-Genre Grid</div><div class="ab-detail">Onboarding Completion · Apr 20 · 31,800 users · Complete</div></div><span class="ab-badge s-win">✓ WINNER — 97% conf</span></div>
+        <div class="ab-variants">
+          <div class="variant"><div class="v-lbl">Control — 22-genre picker</div><div class="v-val" style="color:var(--muted)">61.4%</div><div class="v-lift neu">Completion rate</div></div>
+          <div class="variant" style="border-color:#4ade8030;background:#4ade8008"><div class="v-lbl">Variant — 6 mood tiles ★</div><div class="v-val" style="color:var(--green)">74.8%</div><div class="v-lift up">▲ +13.4pt (+21.8%)</div></div>
+        </div>
+        <div class="ab-meta"><span class="am"><span class="am-dot" style="background:var(--green)"></span>97.3% confidence</span><span class="am"><span class="am-dot" style="background:var(--blue)"></span>31,800 users</span></div>
+      </div>
+
+      <div class="ab-card">
+        <div class="ab-hd"><div><div class="ab-name">Persistent Mini-Player in Nav Bar</div><div class="ab-detail">Session Duration · May 12 · 9,400 users · Stopped day 6</div></div><span class="ab-badge s-stop">✗ STOPPED — Harm</span></div>
+        <div class="ab-variants">
+          <div class="variant"><div class="v-lbl">Control — Standard nav</div><div class="v-val" style="color:var(--muted)">34.7 min</div><div class="v-lift neu">Avg session</div></div>
+          <div class="variant" style="border-color:#f8717130;background:#f871710a"><div class="v-lbl">Variant — Mini player ✗</div><div class="v-val" style="color:var(--red)">31.2 min</div><div class="v-lift dn">▼ −3.5 min (−10.1%)</div></div>
+        </div>
+        <div class="ab-meta"><span class="am"><span class="am-dot" style="background:var(--red)"></span>Statistically significant harm — rolled back</span></div>
+      </div>
+
+      <div class="chart-card full" style="margin-bottom:16px">
+        <div class="chart-hd"><div><div class="chart-title">Experiment Lift Summary</div><div class="chart-sub">% lift per test — positive = good, negative = harm</div></div></div>
+        <div style="position:relative;height:200px"><canvas id="abSummaryChart"></canvas></div>
+      </div>
+
+      <!-- AB RECOMMENDATIONS -->
+      <div class="rec-section">
+        <div class="rec-hd">
+          <div class="rec-title">Experiment Roadmap Actions</div>
+          <div class="rec-sub">What to ship, stop, and test next</div>
+        </div>
+        <div class="rec-table-wrap">
+          <table class="rec-table">
+            <thead><tr><th>Problem</th><th>Recommendation</th><th>Expected Impact</th><th>Priority</th><th>Business Outcome</th></tr></thead>
+            <tbody id="abRecTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ═══════════════════════════════════
+// UTILS
+// ═══════════════════════════════════
+const R   = (a,b)=>Math.random()*(b-a)+a;
+const jit = (arr,p=0.05)=>arr.map(v=>v===null?null:+(v*(1+R(-p,p))).toFixed(2));
+const fmt = n=>n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':String(Math.round(n));
+const dlt = (v,prev,inv=false)=>{
+  const diff=+(v-prev).toFixed(2);
+  const p=Math.abs(+(diff/Math.abs(prev)*100).toFixed(1));
+  const good=inv?diff<0:diff>0;
+  return `<span class="${good?'up':'dn'}">${diff>0?'▲':'▼'} ${p}%</span><span class="neu"> vs prev</span>`;
+};
+
+// ═══════════════════════════════════
+// CHART REGISTRY
+// ═══════════════════════════════════
+const CH={};
+function mkChart(id,cfg){
+  if(CH[id]){try{CH[id].destroy();}catch(e){}delete CH[id];}
+  const el=document.getElementById(id);if(!el)return null;
+  CH[id]=new Chart(el,cfg);return CH[id];
+}
+const GR={color:'#ffffff06'};
+const TK={color:'#555762',font:{size:11}};
+const TKS={color:'#555762',font:{size:10}};
+function mkSpark(id,data,color){
+  mkChart(id,{type:'line',data:{labels:data.map((_,i)=>i),datasets:[{data,borderColor:color,borderWidth:1.5,pointRadius:0,fill:true,backgroundColor:color+'20',tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}});
+}
+
+// ═══════════════════════════════════
+// DATA MODEL
+// ═══════════════════════════════════
+const BASE={dau:1230000,subs:284000,cvr:18.3,sess:34.7,churn:3.2,arpu:8.42};
+let CURR={...BASE};
+let activeFunnelKey='activation';
+function freshSnap(){
+  return{
+    dau:Math.round(BASE.dau*R(.93,1.12)),subs:Math.round(BASE.subs*R(.96,1.07)),
+    cvr:+(BASE.cvr*R(.91,1.10)).toFixed(1),sess:+(BASE.sess*R(.93,1.10)).toFixed(1),
+    churn:+(BASE.churn*R(.88,1.14)).toFixed(2),arpu:+(BASE.arpu*R(.97,1.05)).toFixed(2)
+  };
+}
+
+// ═══════════════════════════════════
+// RECOMMENDATIONS DATA
+// ═══════════════════════════════════
+function recRow(problem, problemSub, recommendation, recNote, impactLabel, impactClass, priority, priClass, outcomeNum, outcomeText){
+  return `<tr>
+    <td><div class="rec-problem">${problem}</div><div class="rec-problem-sub">${problemSub}</div></td>
+    <td><div class="rec-recommendation">${recommendation}<em>${recNote}</em></div></td>
+    <td><span class="impact-pill ${impactClass}">${impactLabel}</span></td>
+    <td><span class="pri-badge ${priClass}">${priority}</span></td>
+    <td><div class="outcome-num">${outcomeNum}</div><div class="outcome-text">${outcomeText}</div></td>
+  </tr>`;
+}
+
+const KPI_RECS=()=>[
+  recRow('High churn after trial','Trial-to-paid CVR at 18.3%, below 22% target','Delay paywall to Session 3 — show value first','A/B winner at +4.1pt lift, 94% confidence','+22% CVR lift','imp-high','P1 · Ship Now','pri-p1','+$28K MRR','+~800 conversions/week at current traffic'),
+  recRow('DAU growth slowing','WoW growth compressed vs last quarter','Accelerate Discover Weekly personalisation rollout','Already shipped May 10 — expand to 100% of users','+12% DAU','imp-high','P1 · This Week','pri-p1','+14K DAU','+$4.2K MRR from higher engagement'),
+  recRow('Student plan churn at 6.2%','2× platform average — semester-end spikes','Introduce "Pause" feature for student plans','Zero cancellations during pause window','-28% student churn','imp-med','P2 · Next Sprint','pri-p2','−820 churns/mo','$8K MRR retention per semester'),
+  recRow('ARPU stagnating at $8.42','Annual plan uptake only 8% of subscribers','Run annual plan upsell push campaign in-app','Target monthly subscribers > 90 days old','+9% ARPU','imp-med','P2 · Next Sprint','pri-p2','+$0.76/user','$215K ARR uplift if 10% convert to annual'),
+  recRow('Feature adoption gap','AI DJ only 28% adoption despite investment','Surface AI DJ in onboarding mood-tile flow','Add as recommended action after genre selection','+34% adoption','imp-low','P3 · Backlog','pri-p3','+18K users','Differentiator for premium retention'),
+];
+
+const FUNNEL_RECS={
+  activation:[
+    recRow('48% drop at phone verification','Single biggest conversion leak in activation','Add Google One-tap auth as OTP alternative','Removes 38s OTP wait for Android Tier-2/3 users','+18% step CVR','imp-high','P1 · Ship Now','pri-p1','+198K activations/mo','Estimated $94K ARR from recovered activations'),
+    recRow('Paywall before aha moment','Users with <5 plays convert at only 9%','Gate paywall after 15 song plays minimum','Aligns with confirmed A/B winner (+4.1pt)','+22% trial CVR','imp-high','P1 · This Week','pri-p1','+$28K MRR','ROI in first 3 weeks post-ship'),
+    recRow('Genre picker overwhelm (18% drop)','Scroll past row 2 = high abandonment','Ship mood-tile onboarding (A/B winner 97% conf)','Already validated — zero additional testing needed','+13.4pt completion','imp-high','P1 · Ship Now','pri-p1','+87K activations/mo','Lifts all downstream funnel steps'),
+  ],
+  trial:[
+    recRow('Plan selection paralysis','Users spend 4.2 min before abandoning','Show only Monthly vs Annual — hide Family plan here','Re-introduce Family after first successful payment','+15% plan selection','imp-high','P1 · Ship Now','pri-p1','+8K subscribers/mo','$80K MRR impact at scale'),
+    recRow('Paywall fires before 5 songs played','Only 69.7% reach the engagement threshold','Gate paywall behind 10-song minimum during trial','Pairs with Session 3 delay — double impact','+22% conversion','imp-high','P1 · This Week','pri-p1','+$28K MRR','Highest-leverage single change available'),
+    recRow('Payment form abandonment 29%','Only credit card input — high friction','Add Apple Pay & Google Pay one-tap payment','Reduces payment step by 3 taps on mobile','-60% abandonment','imp-med','P2 · Next Sprint','pri-p2','+$12K MRR','Mobile payment friction is the final mile'),
+  ],
+  referral:[
+    recRow('Link CTR only 65.8%','Generic share copy kills click-through','Test personalised share messages with playlist context','Add album art preview — 18.7% vs 4.2% CTR in test','+14pt CTR lift','imp-high','P1 · This Week','pri-p1','+56K clicks/mo','Compounding — more clicks = more installs = more revenue'),
+    recRow('Attribution failure ~22%','Referred users land without incentive context','Deep link fallback: show bonus in-app on attribution fail','Works across Android web-to-app gap','+9% signup rate','imp-med','P2 · Next Sprint','pri-p2','+4.8K signups/mo','Each signup worth ~$8.42 ARPU at conversion'),
+    recRow('Bonus claim rate 70.3%','30% see bonus but never claim it','Auto-apply bonus on first login + push confirmation','Remove all manual claim friction','+22% claim rate','imp-low','P3 · Backlog','pri-p3','+1.1K claims/mo','Increases referral program NPS and repeat shares'),
+  ],
+  playlist:[
+    recRow('Create Playlist CTA buried','3 taps from Now Playing — 45% never reach it','Add "Save queue as playlist" button in Now Playing overlay','One-tap — zero navigation required','+28% playlist creation','imp-high','P1 · Ship Now','pri-p1','+390K playlists/mo','Playlists = stickiness + re-engagement surface'),
+    recRow('29% abandon at naming step','Keyboard hides song list — confusing UX','Auto-generate name from mood/genre context','Let users rename — default is good enough for 70%','-22% abandonment','imp-med','P2 · Next Sprint','pri-p2','+140K playlists/mo','Named playlists shared 4× more than untitled'),
+    recRow('26.7% create < 3-song playlists','No recommendations after naming','Show "You might like" carousel post-naming','Surface personalised tracks based on first song added','+35% song adds','imp-low','P3 · Backlog','pri-p3','+82K fuller playlists','Longer playlists → longer sessions → higher LTV'),
+  ],
+};
+
+const CHURN_RECS=[
+  recRow('High churn after trial end','Week 4 cliff — aligns with 30-day trial expiry','Introduce "Extended Trial" for high-engagement users','Offer 7-day extension to users who played 15+ songs','-18% W4 churn','imp-high','P1 · Ship Now','pri-p1','−1,640 churns/mo','$13.8K MRR retained monthly'),
+  recRow('Student plan churn 6.2%','2× platform average — budget sensitivity','Add "Student Pause" (up to 3 months, no cancellation)','Auto-offer at cancellation flow for .edu emails','-28% student churn','imp-high','P1 · This Week','pri-p1','−820 churns/mo','$4.1K MRR retained per semester cycle'),
+  recRow('34% cite "too expensive" on exit','Pricing perception vs value delivery gap','Reframe pricing page with per-day cost ("$0.33/day")','Anchor against coffee, streaming competitors','-12% price churn','imp-med','P2 · Next Sprint','pri-p2','−490 churns/mo','$4.1K MRR at current mix'),
+  recRow('11.2K users inactive 7+ days','High churn probability within 30 days','Send personalised "missed songs" push within 48h','Use last-played artist/genre for personalisation','+24% resurrection','imp-high','P1 · This Week','pri-p1','+2,688 saves/mo','$22.6K MRR retention from push campaign'),
+  recRow('18% churn for missing content','Podcast/regional music catalog gaps cited','Fast-track 3 top-requested regional catalogs','Prioritise content by active-user location data','-8% content churn','imp-med','P3 · Backlog','pri-p3','−326 churns/mo','Content breadth drives long-term LTV'),
+];
+
+const COHORT_RECS=[
+  recRow('Week 4 is the retention cliff','Retention drops ~18pts from W3→W4 across all cohorts','Launch "Value Reminder" in-app notification at Day 21','Highlight personalisation, offline mode, exclusive content before trial ends','-15% W4 drop','imp-high','P1 · Ship Now','pri-p1','−1.2K churns/mo','$10.1K MRR retained; compound over 12 months = $121K ARR'),
+  recRow('Referral cohorts retain 18pts higher','Organic acquisition cohorts underperform significantly','Increase referral incentive from $1 to $2 credit','ROI positive at >$8.42 ARPU — each referral pays for itself in month 2','+18pt W8 retention','imp-high','P1 · This Week','pri-p1','+4,200 retained users','$35K ARR impact from cohort quality improvement'),
+  recRow('Annual cohort dip at W9–10','Renewal cliff — users disengage before annual renewal','Launch W8 re-engagement campaign for annual subscribers','Personalised "Your year in music" recap + renewal offer','-35% renewal churn','imp-med','P2 · Next Sprint','pri-p2','−280 annual churns','$27.7K ARR retained — highest ARPU segment'),
+  recRow('May cohort showing early strength','4pts above prior cohorts at W2','Double down on mood-tile onboarding (confirmed driver)','Full rollout + measure W4 delta vs control cohorts','+4pt W4 retention','imp-med','P2 · Next Sprint','pri-p2','+620 retained users','Structural improvement in acquisition quality'),
+];
+
+const AB_RECS=[
+  recRow('Paywall at Session 1 — confirmed too early','94% confidence winner waiting to ship','Ship Paywall Delay to 100% of users immediately','Every day of delay = ~$933 MRR left on table','+22% trial CVR','imp-high','P1 · Ship TODAY','pri-p1','+$28K MRR','$336K ARR — highest-confidence action in backlog'),
+  recRow('Mood tiles vs genre grid — confirmed winner','97% confidence, +13.4pt onboarding completion','Roll out mood-tile onboarding to 100% of new users','Kills the #2 activation leak — pairs with OTP fix','+13.4pt completion','imp-high','P1 · Ship Now','pri-p1','+87K activations/mo','Lifts all downstream conversion metrics'),
+  recRow('Home Hero test at 78.1% confidence','Not yet significant — 5 days remaining','Do not ship early — wait for 95% significance','Premature rollout risks negative effect on 20% of users','ETA +10.1% sessions','imp-med','P2 · Monitor','pri-p2','+3.5 min/session','Ship only when significant — $14K MRR potential'),
+  recRow('Mini Player caused −10.1% session drop','Statistically significant harm — rolled back','Run root-cause analysis before any follow-up test','Investigate whether navigation occlusion or audio context switching is the cause','−10.1% sessions stopped','imp-low','P4 · Post-mortem','pri-p4','Harm averted','Saved ~$18K MRR/mo from negative regression'),
+];
+
+function renderRecTable(tbodyId, rows){
+  const el=document.getElementById(tbodyId);
+  if(!el)return;
+  el.innerHTML=rows.join('');
+}
+
+// ═══════════════════════════════════
+// KPI TAB
+// ═══════════════════════════════════
+function renderKPI(d,prev){
+  document.getElementById('v-dau').textContent=fmt(d.dau);
+  document.getElementById('v-subs').textContent=fmt(d.subs);
+  document.getElementById('v-cvr').textContent=d.cvr+'%';
+  document.getElementById('v-sess').textContent=d.sess+' min';
+  document.getElementById('v-churn').textContent=d.churn+'%';
+  document.getElementById('v-arpu').textContent='$'+d.arpu;
+  document.getElementById('d-dau').innerHTML=dlt(d.dau,prev.dau);
+  document.getElementById('d-subs').innerHTML=dlt(d.subs,prev.subs);
+  document.getElementById('d-cvr').innerHTML=dlt(d.cvr,prev.cvr);
+  document.getElementById('d-sess').innerHTML=dlt(d.sess,prev.sess);
+  document.getElementById('d-churn').innerHTML=dlt(d.churn,prev.churn,true);
+  document.getElementById('d-arpu').innerHTML=dlt(d.arpu,prev.arpu);
+
+  mkSpark('sp-dau',  jit([800,830,860,840,880,900,870,940,970,1010,1110,1230,d.dau/1000].map(v=>v*1000)),'#4ade80');
+  mkSpark('sp-subs', jit([240,244,248,252,254,258,260,265,268,272,278,282,d.subs/1000].map(v=>v*1000)),'#60a5fa');
+  mkSpark('sp-cvr',  jit([20.1,19.8,20.4,19.9,20.2,19.6,19.1,18.8,18.5,18.4,18.3,18.2,d.cvr]),'#a78bfa');
+  mkSpark('sp-sess', jit([28,29,30,31,31,32,33,33,34,34,35,35,d.sess]),'#f472b6');
+  mkSpark('sp-churn',jit([2.6,2.7,2.8,2.8,2.9,2.9,3.0,3.0,3.1,3.1,3.2,3.1,d.churn]),'#fbbf24');
+  mkSpark('sp-arpu', jit([7.8,7.9,8.0,8.1,8.1,8.2,8.2,8.3,8.3,8.4,8.4,8.4,d.arpu]),'#f0f0f0');
+
+  const mrr=(d.subs*d.arpu/1e6).toFixed(2);
+  const dauN=((d.dau-prev.dau)/prev.dau*100).toFixed(1);
+  const subN=((d.subs-prev.subs)/prev.subs*100).toFixed(1);
+  document.getElementById('chip-dau').textContent=`DAU ${dauN>0?'▲':'▼'}${Math.abs(dauN)}%`;
+  document.getElementById('chip-subs').textContent=`Subs ${subN>0?'▲':'▼'}${Math.abs(subN)}%`;
+  document.getElementById('chip-mrr').textContent=`$${mrr}M MRR`;
+  document.getElementById('mrrSub').textContent=`MRR $${mrr}M · by tier`;
+
+  const insights=[
+    `<strong>DAU hit ${fmt(d.dau)}</strong> — Discover Weekly personalisation (May 10) is the primary driver. However, <strong>trial-to-paid CVR is ${d.cvr}%</strong> — paywall fires before users reach the aha moment (&lt;5 listens). A confirmed A/B winner (+4.1pt) is waiting to ship.`,
+    `<strong>Churn at ${d.churn}%</strong> — above the 2.5% target. At-risk segment: users inactive 7+ days who skipped ≥3 Discover Weekly playlists churn at 68% within 30 days (~${fmt(Math.round(d.subs*0.04))} users). Personalised "missed songs" push within 48h saves 22–28%.`,
+    `<strong>Session time ${d.sess} min</strong> — Home Hero A/B test contributes +3.5 min in the variant. <strong>ARPU $${d.arpu}</strong> — annual plan upsell push could add 8–12% based on Q1 cohort behaviour.`,
+  ];
+  document.getElementById('kpiInsight').innerHTML=insights[d.churn>3.3?1:d.sess<33?2:0];
+
+  const range=parseInt(document.getElementById('rangeSelect').value);
+  const pts=range===7?7:12;
+  const lbls=range===7?['Mon','Tue','Wed','Thu','Fri','Sat','Sun']:['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'].slice(-pts);
+  const dauA=jit(Array.from({length:pts},(_,i)=>Math.round(d.dau*(0.72+i*0.026))));
+  const mauA=dauA.map(v=>Math.round(v*R(2.6,2.9)));
+  const subA=jit(Array.from({length:pts},(_,i)=>Math.round(d.subs*(0.82+i*0.015))));
+  document.getElementById('growthSub').textContent=`DAU · MAU · Subscribers — last ${range} ${range===7?'days':'weeks'}`;
+
+  mkChart('growthChart',{type:'line',data:{labels:lbls,datasets:[
+    {label:'DAU', data:dauA,borderColor:'#4ade80',backgroundColor:'#4ade8010',tension:.4,fill:true, pointRadius:2,pointBackgroundColor:'#4ade80'},
+    {label:'MAU', data:mauA,borderColor:'#60a5fa',backgroundColor:'transparent',tension:.4,fill:false,pointRadius:1,borderDash:[5,3]},
+    {label:'Subs',data:subA,borderColor:'#a78bfa',backgroundColor:'transparent',tension:.4,fill:false,pointRadius:2,borderDash:[2,4],pointBackgroundColor:'#a78bfa'},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.raw)}}},scales:{x:{grid:GR,ticks:TK},y:{grid:GR,ticks:{...TK,callback:v=>fmt(v)}}}}});
+
+  mkChart('revenueChart',{type:'doughnut',data:{labels:['Individual','Family','Student','Annual'],datasets:[{data:jit([58,22,12,8],.08),backgroundColor:['#4ade80','#60a5fa','#a78bfa','#fbbf24'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.label+': '+c.parsed+'%'}}},cutout:'66%'}});
+  mkChart('featureChart',{type:'bar',data:{labels:['Discover Weekly','Playlists','Offline','Lyrics','Podcasts','Social','AI DJ'],datasets:[{data:jit([78,72,64,52,41,34,28],.07),backgroundColor:['#4ade80','#4ade80bb','#4ade8088','#60a5fa','#60a5fa99','#a78bfa','#a78bfabb'],borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:GR,ticks:{...TKS,callback:v=>v+'%'},max:100},y:{grid:{display:false},ticks:TKS}}}});
+
+  renderRecTable('kpiRecTable',KPI_RECS());
+}
+
+// ═══════════════════════════════════
+// CHURN TAB
+// ═══════════════════════════════════
+function renderChurn(d,prev){
+  const atRisk=Math.round(d.subs*R(.035,.055));
+  const ltv=Math.round(d.arpu*R(12,16));
+  const res=Math.round(atRisk*R(.19,.30));
+  document.getElementById('c-churn').textContent=d.churn+'%';
+  document.getElementById('c-risk').textContent=fmt(atRisk);
+  document.getElementById('c-ltv').textContent='$'+ltv;
+  document.getElementById('c-res').textContent=fmt(res);
+  document.getElementById('cd-churn').innerHTML=dlt(d.churn,prev.churn,true);
+  document.getElementById('cd-ltv').innerHTML=`<span class="up">▲ ${R(1,5).toFixed(1)}% QoQ</span>`;
+  document.getElementById('chip-churn').textContent='Current: '+d.churn+'%';
+  document.getElementById('churnMeta').textContent=`Monthly churn ${d.churn}% · ${fmt(atRisk)} at-risk users`;
+  const msgs=[
+    `Users inactive 7+ days who skipped ≥3 Discover Weekly playlists churn at <strong>68%</strong> within 30 days — <strong>${fmt(atRisk)}</strong> users in this bucket now. Personalised "missed songs" push within 48h saves an estimated <strong>22–28%</strong>.`,
+    `<strong>Student plan churn ${(d.churn*1.9).toFixed(1)}%</strong> — nearly 2× platform average. Price sensitivity peaks at semester-end. A "Pause" feature retains this cohort without full cancellation.`,
+    `Re-engagement campaigns recovered <strong>${fmt(res)} users</strong> this period. Push outperforms email 3.2× for 7-day reactivation. Artist-personalised content shows +41% open rate.`,
+  ];
+  document.getElementById('churnInsight').innerHTML=msgs[Math.floor(R(0,3))];
+  mkChart('churnTrendChart',{type:'line',data:{labels:['Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May'],datasets:[
+    {data:jit([2.6,2.7,2.8,2.8,2.9,2.9,3.0,3.0,3.1,3.1,3.2,d.churn],.03),borderColor:'#f87171',backgroundColor:'#f8717112',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#f87171'},
+    {data:Array(12).fill(2.5),borderColor:'#fbbf24',borderDash:[6,3],borderWidth:1,pointRadius:0},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false}},scales:{x:{grid:GR,ticks:TK},y:{grid:GR,ticks:{...TK,callback:v=>v+'%'},min:2,max:4}}}});
+  mkChart('churnPlanChart',{type:'bar',data:{labels:['Student','Monthly Ind.','Monthly Fam.','Annual'],datasets:[{data:jit([6.2,4.8,2.1,0.8],.08),backgroundColor:['#f87171','#fbbf24','#60a5fa','#4ade80'],borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:TK},y:{grid:GR,ticks:{...TK,callback:v=>v+'%'}}}}});
+  const reasons=[{pct:34,title:'Too expensive',desc:'Better-value alternatives or budget cuts'},{pct:22,title:"Didn't use enough",desc:"Low engagement — couldn't justify cost"},{pct:18,title:'Missing content',desc:'Podcasts, regional music, catalog gaps'},{pct:14,title:'Switched competitor',desc:'YouTube Music, Apple Music, Amazon'},{pct:8,title:'Technical issues',desc:'App crashes, offline sync failures'},{pct:4,title:'Other / Personal',desc:'Pause, relocation, gifted sub expired'}];
+  const jR=reasons.map(r=>({...r,pct:Math.round(r.pct*R(.9,1.12))}));
+  const tot=jR.reduce((s,r)=>s+r.pct,0),max=jR[0].pct;
+  document.getElementById('reasonGrid').innerHTML=jR.map(r=>`<div class="reason-card"><div class="reason-pct">${Math.round(r.pct/tot*100)}%</div><div style="flex:1"><div class="reason-title">${r.title}</div><div class="reason-desc">${r.desc}</div><div class="reason-bar-bg"><div class="reason-bar" style="width:${r.pct/max*100}%"></div></div></div></div>`).join('');
+  renderRecTable('churnRecTable',CHURN_RECS);
+}
+
+// ═══════════════════════════════════
+// COHORT TAB
+// ═══════════════════════════════════
+function renderCohort(d){
+  const msgs=[
+    `<strong>Week 4 is the churn cliff</strong> — retention drops from ~72% (W3) to ~54% (W4) across all cohorts, aligned with trial expiry. Referral-acquired cohorts retain <strong>18 pts higher at W8</strong> vs paid acquisition.`,
+    `<strong>May cohort trending 4pts above last year at W2</strong>, likely driven by mood-tile onboarding. If this holds at W4, it confirms a structural improvement in product stickiness.`,
+    `<strong>Annual subscribers show near-zero churn weeks 1–8</strong>, then dip at W9–10 as renewal approaches. A W8 win-back campaign could recover ${fmt(Math.round(d.subs*.01))} users before the renewal cliff.`,
+  ];
+  document.getElementById('cohortInsight').innerHTML=msgs[Math.floor(R(0,3))];
+  const raw=[
+    {label:'Jan W1',data:[100,88,80,73,55,50,47,44,42,40,39,38,37]},
+    {label:'Jan W3',data:[100,86,79,71,54,49,46,43,41,39,38,37,null]},
+    {label:'Feb W1',data:[100,85,77,70,53,48,45,43,40,39,37,null,null]},
+    {label:'Feb W3',data:[100,87,80,72,56,51,48,45,43,41,null,null,null]},
+    {label:'Mar W1',data:[100,84,76,69,52,47,44,41,39,null,null,null,null]},
+    {label:'Apr W1',data:[100,86,78,71,54,49,46,null,null,null,null,null,null]},
+    {label:'May W1',data:[100,84,76,null,null,null,null,null,null,null,null,null,null]},
+  ];
+  const cohorts=raw.map(c=>({...c,data:c.data.map(v=>v===null?null:Math.min(100,Math.max(0,Math.round(v*R(.96,1.04)))))}));
+  mkChart('cohortCurveChart',{type:'line',data:{labels:['W0','W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'],datasets:[
+    {label:'Jan–Feb',data:cohorts[0].data,borderColor:'#4ade80',tension:.4,fill:false,pointRadius:2,pointBackgroundColor:'#4ade80'},
+    {label:'Mar–Apr',data:cohorts[4].data,borderColor:'#60a5fa',tension:.4,fill:false,pointRadius:2,borderDash:[5,3],pointBackgroundColor:'#60a5fa'},
+    {label:'May',    data:cohorts[6].data,borderColor:'#a78bfa',tension:.4,fill:false,pointRadius:4,pointBackgroundColor:'#a78bfa'},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw??'—')+'%'}}},scales:{x:{grid:GR,ticks:TK},y:{grid:GR,ticks:{...TK,callback:v=>v+'%'},min:0,max:105}}}});
+  let html='<thead><tr><th>Cohort</th>'+Array.from({length:13},(_,i)=>`<th>W${i}</th>`).join('')+'</tr></thead><tbody>';
+  cohorts.forEach(c=>{
+    html+=`<tr><td>${c.label}</td>`;
+    for(let i=0;i<13;i++){
+      const v=c.data[i];
+      if(v===null||v===undefined){html+='<td></td>';continue;}
+      const bg=v>80?'#4ade80':v>65?'#22c55e':v>50?'#fbbf24':v>35?'#fb923c':'#f87171';
+      html+=`<td><span class="cc" style="background:${bg}20;color:${bg};border:1px solid ${bg}30">${v}%</span></td>`;
+    }
+    html+='</tr>';
+  });
+  document.getElementById('cohortTable').innerHTML=html+'</tbody>';
+  renderRecTable('cohortRecTable',COHORT_RECS);
+}
+
+// ═══════════════════════════════════
+// A/B CHART + RECS
+// ═══════════════════════════════════
+function renderABChart(){
+  mkChart('abSummaryChart',{type:'bar',data:{labels:['Mood Tiles (Winner)','Paywall Delay (Winner)','Home Hero (Running)','Mini Player (Stopped)'],datasets:[{data:[21.8,22.4,10.1,-10.1],backgroundColor:['#4ade80','#4ade80','#60a5fa88','#f87171'],borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.raw>0?'+':'')+c.raw+'% lift'}}},scales:{x:{grid:{display:false},ticks:TK},y:{grid:GR,ticks:{...TK,callback:v=>(v>0?'+':'')+v+'%'}}}}});
+  renderRecTable('abRecTable',AB_RECS);
+}
+
+// ═══════════════════════════════════
+// FUNNEL DATA
+// ═══════════════════════════════════
+const FUNNELS={
+  activation:{
+    title:'User Activation Funnel',sub:'App install → first meaningful engagement',
+    steps:[{n:'App Install',u:3400000},{n:'App Opened (D1)',u:2890000},{n:'Onboarding Started',u:2340000},{n:'Phone Verified / Auth',u:1210000},{n:'Genre / Mood Selected',u:980000},{n:'First Song Played',u:720000},{n:'Playlist Created',u:298000}],
+    platform:{labels:['Install→Open','Open→Auth','Auth→Play','Play→Paid'],ios:[91,72,68,24],android:[85,58,42,16]},
+    source:{labels:['Organic','Referral','Influencer','Paid Social','Email','Paid Search'],vals:[8.8,14.2,11.3,5.1,9.6,4.2]},
+    hyp:[
+      {sev:'high',step:'Step 3→4 · Phone Verification (48% drop)',text:'<strong>OTP friction is the single biggest leak.</strong> Android users in Tier-2/3 cities wait 38s for OTP vs 4s on iOS in metros. The give-up window is ~15s.',action:'Add Google One-tap auth as OTP alternative'},
+      {sev:'med', step:'Step 5→6 · Paywall before aha moment',text:'<strong>Users hit the paywall before experiencing core value.</strong> Users with &lt;5 plays convert at only 9% vs 34% for those with 15+ plays.',action:'Delay paywall to Session 3 or after 15 song plays'},
+      {sev:'low', step:'Step 2→3 · Genre picker overwhelm',text:'<strong>22-genre picker causes decision fatigue.</strong> Completion drops 18% past row 2. The mood-tile A/B winner already proves the fix.',action:'Ship 6 mood-tile onboarding (A/B winner at 97% conf)'},
+    ]
+  },
+  trial:{
+    title:'Trial → Paid Conversion Funnel',sub:'Free trial start → active paying subscription',
+    steps:[{n:'Trial Started',u:284000},{n:'App Opened in Trial',u:261000},{n:'5+ Songs Played',u:198000},{n:'Paywall Shown',u:154000},{n:'Plan Selected',u:82000},{n:'Payment Entered',u:58000},{n:'Subscription Active',u:52000}],
+    platform:{labels:['Trial Open','5 Songs','Paywall','Payment'],ios:[92,75,58,42],android:[88,62,44,31]},
+    source:{labels:['Email Drip','Push Notif','In-App Banner','Referral','Retargeting','Organic'],vals:[12.4,9.8,7.2,18.3,5.6,8.1]},
+    hyp:[
+      {sev:'high',step:'Step 4→5 · Plan selection drop (46.8%)',text:'<strong>Decision paralysis on the plan screen.</strong> Users spend avg 4.2 min before abandoning. "Individual vs Family" framing confuses solo users.',action:'Show only Monthly vs Annual — hide Family plan here'},
+      {sev:'med', step:'Step 3→4 · Paywall fires too early',text:'<strong>Only 69.7% reach 5 songs before paywall shows.</strong> 9% vs 34% conversion rate based on song-play depth.',action:'Gate paywall behind 10-song minimum during trial'},
+      {sev:'low', step:'Step 5→6 · Payment form friction (29%)',text:'<strong>Credit card only.</strong> Apple Pay / Google Pay reduce form abandonment by ~60% in comparable apps.',action:'Add Apple Pay and Google Pay one-tap payment'},
+    ]
+  },
+  referral:{
+    title:'Referral Journey Funnel',sub:'Referral link share → new paying subscriber',
+    steps:[{n:'Referral Link Shared',u:480000},{n:'Link Clicked',u:316000},{n:'App Store Visited',u:228000},{n:'App Installed',u:162000},{n:'Sign Up Completed',u:98000},{n:'Referral Bonus Shown',u:74000},{n:'Bonus Claimed',u:52000}],
+    platform:{labels:['Click→Install','Install→Signup','Signup→Bonus','Bonus→Claim'],ios:[78,74,82,71],android:[62,58,76,64]},
+    source:{labels:['WhatsApp','SMS','TikTok','Instagram','Email','Twitter/X'],vals:[22.4,19.6,14.1,11.8,7.4,8.3]},
+    hyp:[
+      {sev:'high',step:'Step 1→2 · Link CTR only 65.8%',text:'<strong>Generic share copy kills CTR.</strong> "Join me" gets 4.2% CTR vs 18.7% for personalised playlist-context messages.',action:'Test personalised share messages with playlist context + album art'},
+      {sev:'med', step:'Step 4→5 · Install to sign-up 60.5%',text:'<strong>Referral context lost for ~22% of installs.</strong> Deep link attribution fails on Android web-to-app.',action:'Deep link fallback: show bonus in-app when attribution fails'},
+      {sev:'low', step:'Step 6→7 · Bonus claim rate 70.3%',text:'<strong>30% never claim their bonus.</strong> Claim requires 3 taps and appears only once.',action:'Auto-apply bonus on first login + push confirmation'},
+    ]
+  },
+  playlist:{
+    title:'Playlist Creation Funnel',sub:'Browsing library → saved playlist',
+    steps:[{n:'Library Browsed',u:2100000},{n:'Search Used',u:1680000},{n:'Song Added to Queue',u:1240000},{n:'Create Playlist Tapped',u:680000},{n:'Playlist Named',u:480000},{n:'Songs Added (3+)',u:352000},{n:'Playlist Saved',u:274000}],
+    platform:{labels:['Browse→Search','Search→Queue','Queue→Create','Create→Save'],ios:[85,78,60,58],android:[76,68,50,49]},
+    source:{labels:['Friend Share','Search','Home Feed','Artist Page','Album Page','Radio'],vals:[28.4,24.6,18.4,12.3,9.8,6.2]},
+    hyp:[
+      {sev:'high',step:'Step 3→4 · Queue to playlist 54.8%',text:'<strong>Create Playlist CTA buried 3 taps deep.</strong> 45.2% of users who queue songs never tap Create Playlist.',action:'Add "Save queue as playlist" one-tap button in Now Playing overlay'},
+      {sev:'med', step:'Step 4→5 · Naming abandonment 29.4%',text:'<strong>Keyboard blocks song list.</strong> "Untitled Playlist 1" is uninspiring default.',action:'Auto-generate name from mood/genre: "Your Chill Sunday Mix"'},
+      {sev:'low', step:'Step 5→6 · Song-count drop-off 26.7%',text:'<strong>No recommendations appear after naming.</strong> Blank search screen kills momentum.',action:'Show "You might like" carousel immediately after naming'},
+    ]
+  }
+};
+
+// ═══════════════════════════════════
+// RENDER FUNNEL
+// ═══════════════════════════════════
+function renderFunnel(key){
+  activeFunnelKey=key;
+  const f=FUNNELS[key];
+  document.getElementById('funnelTitle').textContent=f.title;
+  document.getElementById('funnelSub').textContent=f.sub;
+  const steps=f.steps.map(s=>({...s,u:Math.round(s.u*R(.96,1.04))}));
+  const first=steps[0].u,last=steps[steps.length-1].u;
+  const overallDrop=((1-last/first)*100).toFixed(1);
+  document.getElementById('funnelDrop').textContent=`Overall: ${overallDrop}% lost`;
+  document.getElementById('funnelMeta').textContent=`${f.title} · ${fmt(first)} entered · ${fmt(last)} converted`;
+  const viz=document.getElementById('funnelViz');
+  viz.innerHTML='';
+  steps.forEach((s,i)=>{
+    if(i>0){
+      const prev=steps[i-1].u;
+      const dp=((prev-s.u)/prev*100).toFixed(1);
+      viz.innerHTML+=`<div class="f-arrow">↓ <span style="color:var(--red)">${dp}% drop-off</span></div>`;
+    }
+    const barPct=(s.u/first*100).toFixed(1);
+    const dropPct=i>0?((steps[i-1].u-s.u)/steps[i-1].u*100).toFixed(1):0;
+    const color=dropPct>45?'#f87171':dropPct>25?'#fbbf24':'#4ade80';
+    viz.innerHTML+=`<div class="f-row">
+      <span class="f-lbl">${s.n}</span>
+      <div class="f-bar-bg"><div class="f-bar" style="width:${barPct}%;background:${color}">${s.u.toLocaleString()}</div></div>
+      <span class="f-pct">${barPct}%</span>
+      ${i>0?`<span class="f-drop">▼${dropPct}%</span>`:'<span class="f-drop"></span>'}
+    </div>`;
+  });
+  document.getElementById('funnelHyp').innerHTML=f.hyp.map(h=>
+    `<div class="hyp-card ${h.sev==='med'?'med':h.sev==='low'?'low':''}">
+      <div class="hyp-step">${h.step.toUpperCase()} · ${h.sev.toUpperCase()} SEVERITY</div>
+      <div class="hyp-text">${h.text}</div>
+      <div class="hyp-action">⚡ Quick win: ${h.action}</div>
+    </div>`
+  ).join('');
+
+  if(CH['platformChart']){try{CH['platformChart'].destroy();}catch(e){}delete CH['platformChart'];}
+  CH['platformChart']=new Chart(document.getElementById('platformChart'),{type:'bar',data:{labels:f.platform.labels,datasets:[{label:'iOS',data:jit(f.platform.ios,.04),backgroundColor:'#60a5fa',borderRadius:4},{label:'Android',data:jit(f.platform.android,.04),backgroundColor:'#a78bfa',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw.toFixed(1)+'%'}}},scales:{x:{grid:{display:false},ticks:TKS},y:{grid:GR,ticks:{...TKS,callback:v=>v+'%'},max:100}}}});
+
+  if(CH['sourceChart']){try{CH['sourceChart'].destroy();}catch(e){}delete CH['sourceChart'];}
+  CH['sourceChart']=new Chart(document.getElementById('sourceChart'),{type:'bar',data:{labels:f.source.labels,datasets:[{data:jit(f.source.vals,.06),backgroundColor:['#4ade80','#22d3ee','#f472b6','#fbbf24','#a78bfa','#60a5fa'],borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+'%'}}},scales:{x:{grid:GR,ticks:{...TKS,callback:v=>v+'%'},max:35},y:{grid:{display:false},ticks:TKS}}}});
+
+  renderRecTable('funnelRecTable',FUNNEL_RECS[key]||[]);
+  document.getElementById('funnelRecSub').textContent=`Based on ${f.title.toLowerCase()} drop-off analysis`;
+}
+
+function switchFunnel(key,btn){
+  document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderFunnel(key);
+}
+
+// ═══════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════
+const TAB_NAMES={kpi:'KPI Dashboard',funnel:'Funnel Analytics',churn:'Churn Analytics',cohort:'Cohort Analysis',ab:'A/B Tests'};
+function showTab(id){
+  document.querySelectorAll('.tab-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+  document.getElementById('pageTitle').textContent=TAB_NAMES[id]||id;
+  if(id==='funnel') renderFunnel(activeFunnelKey);
+  if(id==='churn')  renderChurn(CURR,{...CURR,churn:+(CURR.churn*R(.92,1.06)).toFixed(2)});
+  if(id==='cohort') renderCohort(CURR);
+  if(id==='ab')     renderABChart();
+}
+
+// ═══════════════════════════════════
+// REFRESH
+// ═══════════════════════════════════
+function doRefresh(){
+  const btn=document.getElementById('refreshBtn');
+  btn.textContent='↻ Refreshing…';btn.disabled=true;
+  setTimeout(()=>{
+    const prev={...CURR};CURR=freshSnap();
+    renderKPI(CURR,prev);
+    const active=document.querySelector('.tab-section.active');
+    if(active){
+      const id=active.id.replace('tab-','');
+      if(id==='churn')  renderChurn(CURR,prev);
+      if(id==='cohort') renderCohort(CURR);
+      if(id==='funnel') renderFunnel(activeFunnelKey);
+      if(id==='ab')     renderABChart();
+    }
+    btn.textContent='↻ Refresh Data';btn.disabled=false;
+  },500);
+}
+
+// ═══════════════════════════════════
+// BOOT
+// ═══════════════════════════════════
+(function boot(){
+  const prev={dau:1094000,subs:268500,cvr:20.4,sess:32.1,churn:2.8,arpu:8.26};
+  renderKPI(CURR,prev);
+  setInterval(()=>doRefresh(),45000);
+})();
+</script>
+</body>
+</html>

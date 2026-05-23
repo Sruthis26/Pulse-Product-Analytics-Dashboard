@@ -138,22 +138,22 @@ This creates a realistic product analytics simulation environment.
 # Screenshots
 
 ## KPI Dashboard
-![KPI Dashboard](screenshots/kpi-dashboard.png)
+![KPI Dashboard](kpi-dashboard.png)
 
 ---
 
 ## Funnel Analytics
-![Funnel Analytics](screenshots/funnel-analytics.png)
+![Funnel Analytics](funnel_analytics.png)
 
 ---
 
 ## Churn Analytics
-![Churn Analytics](screenshots/churn-analytics.png)
+![Churn Analytics](churn_analytics.png)
 
 ---
 
 ## Cohort Analysis
-![Cohort Analysis](screenshots/cohort-analysis.png)
+![Cohort Analysis](cohort_analysis.png)
 
 ---
 

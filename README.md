@@ -7,11 +7,7 @@ Designed as a product analytics operating system for a fictional music streaming
 ---
 
 ## Live Demo
-
-🔗 Add your deployed link here
-
-Example:
-https://pulse-analytics.vercel.app
+https://pulse-insight.netlify.app/
 
 ---
 
